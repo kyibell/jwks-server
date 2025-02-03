@@ -29,10 +29,10 @@ function generateRSAKeyPair() {
   const forgePublicKey = forge.pki.publicKeyFromPem(publicKey);
   const base64Modulus = Buffer.from(forgePublicKey.n.toByteArray()).toString(
     "base64url"
-  );
+  ); // Encode Modulus to Base64
   const base64Exponent = Buffer.from(forgePublicKey.e.toByteArray()).toString(
     "base64url"
-  );
+  ); // Encode Exponent to Base64
 
   const newKey = {
     // create a newKey object
@@ -52,7 +52,7 @@ function generateRSAKeyPair() {
 }
 
 function generateExpiredKey() {
-  // Function to generate the RSA Key Pair
+  // Function to generate the Expired RSA Key Pair
   const { publicKey, privateKey } = generateKeyPairSync("rsa", {
     modulusLength: 2048, // n parameter, determines how secure it is, typically 2048 bits
     publicKeyEncoding: {
@@ -68,13 +68,13 @@ function generateExpiredKey() {
   const kid = keyIdCounter++; // Increment counter for unique kids
   const expiresIn = Math.floor(Date.now() / 1000) - 30 * 60; // -30 mins
 
-  const forgePublicKey = forge.pki.publicKeyFromPem(publicKey);
+  const forgePublicKey = forge.pki.publicKeyFromPem(publicKey); // For parsing the key to get modulus and exponent
   const base64Modulus = Buffer.from(forgePublicKey.n.toByteArray()).toString(
     "base64url"
-  );
+  ); // Encode modulus to base64
   const base64Exponent = Buffer.from(forgePublicKey.e.toByteArray()).toString(
     "base64url"
-  );
+  ); // Encode exponent to base64
 
   const expiredKey = {
     // create a newKey object
@@ -93,26 +93,21 @@ function generateExpiredKey() {
   return expiredKey;
 }
 
-// isExpired function so we only serve not expired keys
-function isExpired(key) {
-  const currentTime = Date.now() / 1000;
-  return currentTime > key.exp; // Returns true if key is expired, else false if not
-}
-
 function getActiveKey() {
-  const activeKey = keys.find((key) => Date.now() < key.exp * 1000);
-  return activeKey;
+  const activeKey = keys.find((key) => Date.now() < key.exp * 1000); // Finds a key in keys array that is not expired
+  return activeKey; // return the Active key
 }
 
 function getExpiredKey() {
-  const expiredKey = keys.find((key) => Date.now() > key.exp * 1000);
-  return expiredKey;
+  const expiredKey = keys.find((key) => Date.now() > key.exp * 1000); // Checks if the key in keys array is expired
+  return expiredKey; // returns the expired key
 }
 
 app.get("/.well-known/jwks.json", (req, res) => {
   // JWKS Endpoint that only Serves Valid Keys
   const validKeys = keys.filter((key) => Date.now() < key.exp * 1000); //filters the key based on if the exp value returns false
   const jwksKeys = validKeys.map((key) => ({
+    // Map the keys in JWKS format
     kid: key.kid,
     kty: "RSA",
     use: "sig",
@@ -120,7 +115,7 @@ app.get("/.well-known/jwks.json", (req, res) => {
     e: key.e,
   }));
 
-  return res.status(200).json({ keys: jwksKeys });
+  return res.status(200).json({ keys: jwksKeys }); // return the valid keys
 });
 
 app.post("/auth", (req, res) => {
@@ -149,8 +144,17 @@ app.post("/auth", (req, res) => {
 });
 
 app.all("/auth", (req, res) => {
-  // Checking
-  return res.status(405).send("Method not Allowed");
+  // Checking for valid methods
+  if (req.method != "POST") {
+    return res.status(405).send("Method not Allowed");
+  }
+});
+
+app.all("/.well-known/jwks.json", (req, res) => {
+  // Checking for valid methods
+  if (req.method != "GET") {
+    return res.status(405).send("Method not Allowed");
+  }
 });
 
 generateRSAKeyPair();
