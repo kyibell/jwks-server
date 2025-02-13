@@ -119,9 +119,9 @@ app.get("/.well-known/jwks.json", (req, res) => {
 });
 
 app.post("/auth", (req, res) => {
-  let expired = req.query.expired === "true";
+  let expired = req.query.expired === "true"; // If the expired query is there set to true
 
-  const key = expired ? getExpiredKey() : getActiveKey();
+  const key = expired ? getExpiredKey() : getActiveKey(); // determines what key should be fetched for JWT
 
   const payload = {
     exp: expired
@@ -140,7 +140,10 @@ app.post("/auth", (req, res) => {
     },
   });
 
-  return res.json({ token: signedJWT });
+  return res.json({
+    expiry: key.exp,
+    token: signedJWT,
+  });
 });
 
 app.all("/auth", (req, res) => {
