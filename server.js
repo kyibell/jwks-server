@@ -141,7 +141,7 @@ app.post("/auth", (req, res) => {
   });
 
   return res.json({
-    expiry: key.exp,
+    expiry: payload.exp,
     token: signedJWT,
   });
 });
