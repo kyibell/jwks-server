@@ -1,6 +1,7 @@
 import { generateKeyPairSync } from "crypto";
 import express from "express";
 import jwt from "jsonwebtoken";
+import db from "./db.js";
 const forgeModule = await import("node-forge");
 const forge = forgeModule.default; // Fixes ES6 Import Issue
 
@@ -47,7 +48,6 @@ function generateRSAKeyPair() {
     kty: "RSA",
   };
 
-  keys.push(newKey); // Add the new Key to the list of keys
   return newKey;
 }
 
@@ -93,12 +93,12 @@ function generateExpiredKey() {
   return expiredKey;
 }
 
-function getActiveKey() {
+export function getActiveKey() {
   const activeKey = keys.find((key) => Date.now() < key.exp * 1000); // Finds a key in keys array that is not expired
   return activeKey; // return the Active key
 }
 
-function getExpiredKey() {
+export function getExpiredKey() {
   const expiredKey = keys.find((key) => Date.now() > key.exp * 1000); // Checks if the key in keys array is expired
   return expiredKey; // returns the expired key
 }
