@@ -1,25 +1,20 @@
-import sqlite from "node:sqlite";
-import { DatabaseSync } from "node:sqlite";
+import sqlite3 from "sqlite3";
+sqlite3.verbose();
 
-export const db = new DatabaseSync(":memory:");
+const db = new sqlite3.Database("./totally_not_my_privateKeys.db", (err) => {
+  // Connect to the database
+  if (err) {
+    console.error("Error opening the database.", err.message);
+  } else {
+    console.log("Database Connected");
+  }
+});
 
-// Create keys table
-db.exec(`
-    CREATE TABLE keys(
-        kid INTEGER PRIMARY KEY AUTOINCREMENT,
-        key BLOB NOT NULL,
-        exp INTEGER NOT NULL
-    )
-    `);
-
-// Insertion into the Database
-
-function insertKey(kid, key, exp) {
-  const insert = db.prepare("INSERT INTO keys (kid, key, exp) VALUES (?,?,?)");
-  insert.run(kid, key, exp);
-}
-
-function GetActiveKeys() {
-  const query = db.prepare("SELECT * FROM keys WHERE exp > CURRENT_TIMESTAMP");
-  return query;
-}
+db.serialize(() => {
+  // Create the keys table
+  db.run(`CREATE TABLE IF NOT EXISTS keys(
+    kid INTEGER PRIMARY KEY AUTOINCREMENT,
+    key BLOB NOT NULL
+    exp INTEGER NOT NULL
+    )`);
+});
