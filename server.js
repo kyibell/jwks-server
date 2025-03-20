@@ -3,6 +3,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import db from "./db.js";
 import exp from "constants";
+import { lutimesSync } from "fs";
 const forgeModule = await import("node-forge");
 const forge = forgeModule.default; // Fixes ES6 Import Issue
 
@@ -58,9 +59,18 @@ function generateExpiredKey() {
   });
 }
 
-export function getActiveKey() {
-  const activeKey = keys.find((key) => Date.now() < key.exp * 1000); // Finds a key in keys array that is not expired
-  return activeKey; // return the Active key
+async function getActiveKey() {
+  const sql = `SELECT * FROM keys WHERE exp > ?`;
+  const currentTime = Date.now() / 1000;
+  return new Promise((resolve, reject) => {
+    db.get(sql, [currentTime], (error, row) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(row);
+    });
+  });
 }
 
 export function getExpiredKey() {
@@ -83,10 +93,18 @@ app.get("/.well-known/jwks.json", (req, res) => {
   return res.status(200).json({ keys: jwksKeys }); // return the valid keys
 });
 
-app.post("/auth", (req, res) => {
+app.post("/auth", async (req, res) => {
   let expired = req.query.expired === "true"; // If the expired query is there set to true
 
-  const key = expired ? getExpiredKey() : getActiveKey(); // determines what key should be fetched for JWT
+  const key = await getActiveKey(); // determines what key should be fetched for JWT
+
+  if (!key) {
+    return res.status(404).json({ message: "Key not Found." });
+  }
+
+  console.log("KeyID: ", key.kid.toString());
+  console.log("Key: ", key.key);
+  console.log("EXP: ", key.exp);
 
   const payload = {
     exp: expired
@@ -96,7 +114,7 @@ app.post("/auth", (req, res) => {
     jti: key.kid,
   };
 
-  const signedJWT = jwt.sign(payload, key.privateKey, {
+  const signedJWT = jwt.sign(payload, key.key, {
     algorithm: "RS256",
     header: {
       alg: "RS256",
@@ -125,8 +143,8 @@ app.all("/.well-known/jwks.json", (req, res) => {
   }
 });
 
-//generateRSAKeyPair();
-generateExpiredKey();
+// generateRSAKeyPair();
+// generateExpiredKey();
 
 const server = app.listen(port, () => {
   // server start
