@@ -14,7 +14,7 @@ db.serialize(() => {
   // Create the keys table
   db.run(`CREATE TABLE IF NOT EXISTS keys(
     kid INTEGER PRIMARY KEY AUTOINCREMENT,
-    key BLOB NOT NULL
+    key BLOB NOT NULL,
     exp INTEGER NOT NULL
     )`);
 });
