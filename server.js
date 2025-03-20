@@ -2,13 +2,12 @@ import { generateKeyPairSync } from "crypto";
 import express from "express";
 import jwt from "jsonwebtoken";
 import db from "./db.js";
+import exp from "constants";
 const forgeModule = await import("node-forge");
 const forge = forgeModule.default; // Fixes ES6 Import Issue
 
 const app = express(); // Init app
 const port = 8080; // Variable for Port
-let keyIdCounter = 1; // For Kids when generating tokens so it's unique everytime
-let keys = []; // Place to store keys
 
 function generateRSAKeyPair() {
   // Function to generate the RSA Key Pair
@@ -23,32 +22,16 @@ function generateRSAKeyPair() {
       format: "pem",
     },
   });
+  const expiresIn = Math.floor(Date.now() / 1000) + 60 * 60; // 60 mins
 
-  const kid = keyIdCounter++; // Increment counter for unique kids
-  const expiresIn = Math.floor(Date.now() / 1000) + 30 * 60; // 30 mins
+  const sql = `INSERT INTO keys(key, exp) VALUES(?,?)`;
 
-  const forgePublicKey = forge.pki.publicKeyFromPem(publicKey);
-  const base64Modulus = Buffer.from(forgePublicKey.n.toByteArray()).toString(
-    "base64url"
-  ); // Encode Modulus to Base64
-  const base64Exponent = Buffer.from(forgePublicKey.e.toByteArray()).toString(
-    "base64url"
-  ); // Encode Exponent to Base64
-
-  const newKey = {
-    // create a newKey object
-    kid: kid.toString(),
-    publicKey,
-    privateKey,
-    use: "sig",
-    exp: expiresIn,
-    n: base64Modulus,
-    e: base64Exponent,
-    alg: "RS256",
-    kty: "RSA",
-  };
-
-  return newKey;
+  db.run(sql, [privateKey, expiresIn], function (error) {
+    if (error) {
+      console.error(error.message);
+      return;
+    }
+  }); // Insertion Query for inserting keys in the DB.
 }
 
 function generateExpiredKey() {
@@ -65,32 +48,14 @@ function generateExpiredKey() {
     },
   });
 
-  const kid = keyIdCounter++; // Increment counter for unique kids
   const expiresIn = Math.floor(Date.now() / 1000) - 30 * 60; // -30 mins
+  const sql = `INSERT INTO keys(key, exp) VALUES (?,?)`;
 
-  const forgePublicKey = forge.pki.publicKeyFromPem(publicKey); // For parsing the key to get modulus and exponent
-  const base64Modulus = Buffer.from(forgePublicKey.n.toByteArray()).toString(
-    "base64url"
-  ); // Encode modulus to base64
-  const base64Exponent = Buffer.from(forgePublicKey.e.toByteArray()).toString(
-    "base64url"
-  ); // Encode exponent to base64
-
-  const expiredKey = {
-    // create a newKey object
-    kid: kid.toString(),
-    publicKey,
-    privateKey,
-    use: "sig",
-    exp: expiresIn,
-    n: base64Modulus,
-    e: base64Exponent,
-    alg: "RS256",
-    kty: "RSA",
-  };
-
-  keys.push(expiredKey); // Add the new Key to the list of keys
-  return expiredKey;
+  db.run(sql, [privateKey, expiresIn], function (error) {
+    if (error) {
+      console.error(error.message);
+    }
+  });
 }
 
 export function getActiveKey() {
@@ -160,7 +125,7 @@ app.all("/.well-known/jwks.json", (req, res) => {
   }
 });
 
-generateRSAKeyPair();
+//generateRSAKeyPair();
 generateExpiredKey();
 
 const server = app.listen(port, () => {
