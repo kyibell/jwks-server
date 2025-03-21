@@ -38,7 +38,7 @@ function generateRSAKeyPair() {
 
 function generateExpiredKey() {
   // Function to generate the Expired RSA Key Pair
-  const { publicKey, privateKey } = generateKeyPairSync("rsa", {
+  const { privateKey } = generateKeyPairSync("rsa", {
     modulusLength: 2048, // n parameter, determines how secure it is, typically 2048 bits
     publicKeyEncoding: {
       type: "spki", //  Subject public key information (the type of key)
@@ -54,7 +54,9 @@ function generateExpiredKey() {
   const sql = `INSERT INTO keys(key, exp) VALUES (?,?)`;
 
   db.run(sql, [privateKey, expiresIn], function (error) {
+    // Run the db query to insert private key and expiration parameters
     if (error) {
+      // display error if error
       console.error(error.message);
     }
   });
@@ -74,9 +76,18 @@ async function getActiveKey() {
   });
 }
 
-export function getExpiredKey() {
-  const expiredKey = keys.find((key) => Date.now() > key.exp * 1000); // Checks if the key in keys array is expired
-  return expiredKey; // returns the expired key
+async function getExpiredKey() {
+  const sql = `SELECT * FROM keys WHERE exp < ?`;
+  const currentTime = Date.now() / 1000;
+  return new Promise((resolve, reject) => {
+    db.get(sql, [currentTime], (error, row) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(row);
+    });
+  });
 }
 
 app.get("/.well-known/jwks.json", (req, res) => {
@@ -107,7 +118,7 @@ app.get("/.well-known/jwks.json", (req, res) => {
 app.post("/auth", async (req, res) => {
   let expired = req.query.expired === "true"; // If the expired query is there set to true
 
-  const key = await getActiveKey(); // determines what key should be fetched for JWT
+  const key = expired ? await getExpiredKey() : await getActiveKey(); // determines what key should be fetched for JWT
   const privateKey = key.key; // Variable to store the private key
   const publicKeyObject = crypto.createPublicKey({
     key: privateKey,
