@@ -81,17 +81,27 @@ export function getExpiredKey() {
 
 app.get("/.well-known/jwks.json", (req, res) => {
   // JWKS Endpoint that only Serves Valid Keys
-  const validKeys = keys.filter((key) => Date.now() < key.exp * 1000); //filters the key based on if the exp value returns false
-  const jwksKeys = validKeys.map((key) => ({
-    // Map the keys in JWKS format
-    kid: key.kid,
-    kty: "RSA",
-    use: "sig",
-    n: key.n,
-    e: key.e,
-  }));
+  const sql = `SELECT * FROM keys WHERE exp > ?`;
+  const currentTime = Date.now() / 1000;
+  db.all(sql, [currentTime], (error, rows) => {
+    if (error) {
+      console.error(error.message);
+    }
+    const jwks = rows.map((row) => {
+      const privateKey = row.key;
+      const publicKey = crypto.createPublicKey(privateKey);
+      const jwk = publicKey.export({ format: "jwk" }); // Extract modulus and Exponent from the public key
 
-  return res.status(200).json({ keys: jwksKeys }); // return the valid keys
+      return {
+        kid: row.kid.toString(),
+        kty: "RSA",
+        use: "sig",
+        n: jwk.n,
+        e: jwk.e,
+      };
+    });
+    return res.status(200).json({ keys: jwks }); // return the valid keys
+  });
 });
 
 app.post("/auth", async (req, res) => {
@@ -106,7 +116,7 @@ app.post("/auth", async (req, res) => {
   const publicKey = publicKeyObject.export({ format: "pem", type: "spki" });
   const { n, e } = publicKeyObject.export({ format: "jwk" });
   const jwk = {
-    kid: key.kid,
+    kid: key.kid.toString(),
     privateKey,
     publicKey,
     kty: "RSA",
@@ -124,7 +134,7 @@ app.post("/auth", async (req, res) => {
       ? Math.floor(Date.now() / 1000) - 60
       : Math.floor(Date.now() / 1000) + 60 * 5,
     iat: Date.now() / 1000,
-    jti: jwk.kid.toString(),
+    jti: jwk.kid,
   };
 
   const signedJWT = jwt.sign(payload, jwk.privateKey, {
