@@ -1,4 +1,5 @@
 import { generateKeyPairSync } from "crypto";
+import crypto from "crypto";
 import express from "express";
 import jwt from "jsonwebtoken";
 import db from "./db.js";
@@ -12,7 +13,7 @@ const port = 8080; // Variable for Port
 
 function generateRSAKeyPair() {
   // Function to generate the RSA Key Pair
-  const { publicKey, privateKey } = generateKeyPairSync("rsa", {
+  const { privateKey } = generateKeyPairSync("rsa", {
     modulusLength: 2048, // n parameter, determines how secure it is, typically 2048 bits
     publicKeyEncoding: {
       type: "spki", //  Subject public key information (the type of key)
@@ -97,29 +98,41 @@ app.post("/auth", async (req, res) => {
   let expired = req.query.expired === "true"; // If the expired query is there set to true
 
   const key = await getActiveKey(); // determines what key should be fetched for JWT
+  const privateKey = key.key; // Variable to store the private key
+  const publicKeyObject = crypto.createPublicKey({
+    key: privateKey,
+    format: "pem",
+  });
+  const publicKey = publicKeyObject.export({ format: "pem", type: "spki" });
+  const { n, e } = publicKeyObject.export({ format: "jwk" });
+  const jwk = {
+    kid: key.kid,
+    privateKey,
+    publicKey,
+    kty: "RSA",
+    use: "sig",
+    n: n,
+    e: e,
+  };
 
   if (!key) {
     return res.status(404).json({ message: "Key not Found." });
   }
-
-  console.log("KeyID: ", key.kid.toString());
-  console.log("Key: ", key.key);
-  console.log("EXP: ", key.exp);
 
   const payload = {
     exp: expired
       ? Math.floor(Date.now() / 1000) - 60
       : Math.floor(Date.now() / 1000) + 60 * 5,
     iat: Date.now() / 1000,
-    jti: key.kid,
+    jti: jwk.kid.toString(),
   };
 
-  const signedJWT = jwt.sign(payload, key.key, {
+  const signedJWT = jwt.sign(payload, jwk.privateKey, {
     algorithm: "RS256",
     header: {
       alg: "RS256",
       typ: "JWT",
-      kid: key.kid,
+      kid: jwk.kid,
     },
   });
 
