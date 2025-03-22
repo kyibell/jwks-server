@@ -3,8 +3,6 @@ import crypto from "crypto";
 import express from "express";
 import jwt from "jsonwebtoken";
 import db from "./db.js";
-import exp from "constants";
-import { lutimesSync } from "fs";
 const forgeModule = await import("node-forge");
 const forge = forgeModule.default; // Fixes ES6 Import Issue
 
@@ -177,8 +175,8 @@ app.all("/.well-known/jwks.json", (req, res) => {
   }
 });
 
-// generateRSAKeyPair();
-// generateExpiredKey();
+generateRSAKeyPair();
+generateExpiredKey();
 
 const server = app.listen(port, () => {
   // server start
