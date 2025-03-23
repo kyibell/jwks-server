@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "test": "jest --coverage",
-    "start": "node server.js"
+    "test": "node --experimental-vm-modules jest",
+    "start": "node server.js",
+    "coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "type": "module",
   "keywords": [],
@@ -22,6 +23,6 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "supertest": "^7.0.0"
+    "supertest": "^7.1.0"
   }
 }

@@ -60,7 +60,7 @@ function generateExpiredKey() {
   });
 }
 
-async function getActiveKey() {
+export async function getActiveKey() {
   const sql = `SELECT * FROM keys WHERE exp > ?`;
   const currentTime = Date.now() / 1000;
   return new Promise((resolve, reject) => {
@@ -74,7 +74,7 @@ async function getActiveKey() {
   });
 }
 
-async function getExpiredKey() {
+export async function getExpiredKey() {
   const sql = `SELECT * FROM keys WHERE exp < ?`;
   const currentTime = Date.now() / 1000;
   return new Promise((resolve, reject) => {
@@ -117,6 +117,10 @@ app.post("/auth", async (req, res) => {
   let expired = req.query.expired === "true"; // If the expired query is there set to true
 
   const key = expired ? await getExpiredKey() : await getActiveKey(); // determines what key should be fetched for JWT
+
+  if (!key) {
+    return res.status(404).json({ message: "Key not Found." });
+  }
   const privateKey = key.key; // Variable to store the private key
   const publicKeyObject = crypto.createPublicKey({
     key: privateKey,
@@ -133,10 +137,6 @@ app.post("/auth", async (req, res) => {
     n: n,
     e: e,
   };
-
-  if (!key) {
-    return res.status(404).json({ message: "Key not Found." });
-  }
 
   const payload = {
     exp: expired
@@ -187,3 +187,5 @@ server.on("error", (error) => {
   // Error handling
   console.log("Error starting server", error);
 });
+
+export default app; // For Testing
