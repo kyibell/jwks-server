@@ -17,6 +17,26 @@ db.serialize(() => {
     key BLOB NOT NULL,
     exp INTEGER NOT NULL
     )`);
+
+  // Create Users Table
+  db.run(`CREATE TABLE IF NOT EXISTS users(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    email TEXT UNIQUE,
+    date_registered TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP
+    )`);
+
+  // Create Auth_Logs Table
+  db.run(`CREATE TABLE IF NOT EXISTS auth_logs(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_ip TEXT NOT NULL,
+    request_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    user_id INTEGER,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+    )`);
+
 });
 
 export default db; // For the server.js file so we can run queries.
