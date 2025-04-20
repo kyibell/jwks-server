@@ -15,6 +15,7 @@ db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS keys(
     kid INTEGER PRIMARY KEY AUTOINCREMENT,
     key BLOB NOT NULL,
+    iv BLOB NOT NULL,
     exp INTEGER NOT NULL
     )`);
 
@@ -36,7 +37,6 @@ db.serialize(() => {
     user_id INTEGER,
     FOREIGN KEY(user_id) REFERENCES users(id)
     )`);
-
 });
 
 export default db; // For the server.js file so we can run queries.

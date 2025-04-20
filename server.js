@@ -3,8 +3,6 @@ import crypto from "crypto";
 import express from "express";
 import jwt from "jsonwebtoken";
 import db from "./db.js";
-const forgeModule = await import("node-forge");
-const forge = forgeModule.default; // Fixes ES6 Import Issue
 
 const app = express(); // Init app
 const port = 8080; // Variable for Port
