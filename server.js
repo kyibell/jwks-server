@@ -109,6 +109,7 @@ app.get("/.well-known/jwks.json", (req, res) => {
         e: jwk.e,
       };
     });
+
     return res.status(200).json({ keys: jwks }); // return the valid keys
   });
 });
