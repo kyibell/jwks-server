@@ -12,6 +12,7 @@ Then, navigate to the jwks-server directory.
 With a terminal open with the directory of the code run either:
 - `nodemon`
 - `node server.js`
+
 Once you see `App is Listening...` and `Database connected` You have successfully ran the JWKS Server!
 If you want to run the tests/gradebot, open a separate terminal and run the commands needed!
 
