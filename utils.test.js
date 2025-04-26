@@ -4,7 +4,7 @@ import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import app from './server.js'
 import db from './db.js'
-import { getExpiredKey, getActiveKey } from './server.js';
+import { getExpiredKey, getActiveKey, getUserId } from './server.js';
 import { promisify } from 'util'
 
 // Server Tests
@@ -20,6 +20,21 @@ describe('Server Tests', () => {
 
   afterAll((done) => {
     server.close(done); // Close the server after the test
+  });
+
+  beforeAll((done) => {
+    const now = new Date();
+    const nowIso = now.toISOString();
+    db.run(
+      `INSERT INTO users(username,email, password_hash, last_login) VALUES (?,?,?,?)`,
+      ['testusername', 'testemail@test.com', 'testpassword', nowIso],
+      (err) => {
+        if (err && err.code !== 'SQLITE_CONSTRAINT') {
+          return done(err);
+        }
+        done();
+      }
+    );
   });
 
 
@@ -38,9 +53,10 @@ describe('Server Tests', () => {
   });
 });
 
+
 // JWT Validication
 test('POST /auth should return a valid JWT', async () => {
-  const res = await request(app).post('/auth');
+  const res = await request(app).post('/auth').send({username: 'testusername', password: 'testpassword'});
   expect(res.status).toBe(200);
   expect(res.body.token).toBeDefined();
 
@@ -52,7 +68,7 @@ test('POST /auth should return a valid JWT', async () => {
 
 // Auth Expired Returns Expired JWT
 test('POST /auth?expired=true should return an expired JWT', async () => {
-  const res = await request(app).post('/auth?expired=true');
+  const res = await request(app).post('/auth?expired=true').send({username: 'testusername', password: 'testpassword'});;
   expect(res.status).toBe(200); 
   expect(res.body.token).toBeDefined();
 
@@ -144,3 +160,17 @@ test('GET /.well-known/jwks.json should empty jwks when no active keys are avail
   expect(res.body.keys).toEqual([]);
  
 });
+
+// Registrator Endpoint Returns Password
+test('POST /register should return password', async () => {
+  const res = await request(app).post('/register').send({username: 'coolusername', email: 'coolemail@coolemail.com'});
+
+  expect(res.status).toBe(201);
+  expect(res.body.password).toBeDefined();
+})
+
+// Get user_id should return a valid userid
+test('GetUserId() should return a userid ', async () => {
+  const user_id = await getUserId('testusername');
+  expect(user_id).toBeDefined();
+})
