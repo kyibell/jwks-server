@@ -9,7 +9,8 @@ import * as argon2 from "argon2";
 
 const app = express(); // Init app
 const port = 8080; // Variable for Port
-app.use(express.json());
+app.use(express.json()); // for parsing json bodies
+app.enable('trust proxy');
 
 function generateRSAKeyPair() {
   // Function to generate the RSA Key Pair
@@ -94,6 +95,22 @@ export async function getExpiredKey() {
   });
 }
 
+export async function getUserId(username) {
+  return new Promise ((resolve, reject) => {
+    db.get(`SELECT id FROM users WHERE username = ?`, [username], (error, row) => {
+      if (error) { 
+        reject(error) 
+        return; 
+      }
+      if (!row) {
+        resolve(null);
+      } else {
+        resolve(row.id)
+      }
+    });
+  });
+}
+
 app.get("/.well-known/jwks.json", (req, res) => {
   // JWKS Endpoint that only Serves Valid Keys
   const sql = `SELECT * FROM keys WHERE exp > ?`;
@@ -121,6 +138,26 @@ app.get("/.well-known/jwks.json", (req, res) => {
 });
 
 app.post("/auth", async (req, res) => {
+
+  const IP = req.ip; // Get the IP from the request
+  const username  = req.body.username; // Get the Username from the body
+  const user_id = await getUserId(username); // Use helper function to get the user_id from username
+  const request_timestamp = new Date() 
+  const isoString = request_timestamp.toISOString(); // Create the request Timestamp
+
+  if (!user_id) {
+    return res.status(404).json({"message": 'User not found'});
+  }
+
+  const sql = `INSERT INTO auth_logs(request_ip, user_id, request_timestamp) VALUES (?, ?, ?)`
+
+
+  db.run(sql, [IP, user_id, isoString], function(error) {
+     if (error) {
+     console.error(error.message);
+  }
+  });
+
   let expired = req.query.expired === "true"; // If the expired query is there set to true
 
   const key = expired ? await getExpiredKey() : await getActiveKey(); // determines what key should be fetched for JWT
@@ -163,7 +200,9 @@ app.post("/auth", async (req, res) => {
     },
   });
 
-  return res.json({
+  
+
+  return res.status(200).json({
     expiry: payload.exp,
     token: signedJWT,
   });
@@ -179,7 +218,7 @@ app.post("/register", async (req, res) => {
   const lastLogin = new Date()
   const isoString = lastLogin.toISOString();
   const sql = `INSERT INTO users(username, email, password_hash, last_login) VALUES (?, ?, ?, ?)`
-  
+
   db.serialize(() => {
     db.run(sql, [username, email, hash, isoString], function(error) {
       if (error) {
@@ -207,8 +246,8 @@ app.all("/.well-known/jwks.json", (req, res) => {
 });
 
 
-//generateRSAKeyPair();
-//generateExpiredKey();
+generateRSAKeyPair();
+generateExpiredKey();
 
 const server = app.listen(port, () => {
   // server start

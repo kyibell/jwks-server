@@ -10,6 +10,8 @@ const db = new sqlite3.Database("./totally_not_my_privateKeys.db", (err) => {
   }
 });
 
+db.run("PRAGMA journal_mode = WAL;"); // Fixes the SQLITE BUSY Error, Enabling Write Ahead Logging, so DB doesn't lock while making requests
+
 db.serialize(() => {
   // Create the keys table
   db.run(`CREATE TABLE IF NOT EXISTS keys(
