@@ -21,11 +21,13 @@ function generateRSAKeyPair() {
       format: "pem",
     },
   });
+
+  const encrypedPrivateKey = encrypt(privateKey); // Encrypt the Private Key
   const expiresIn = Math.floor(Date.now() / 1000) + 60 * 60; // 60 mins
 
   const sql = `INSERT INTO keys(key, exp) VALUES(?,?)`;
 
-  db.run(sql, [privateKey, expiresIn], function (error) {
+  db.run(sql, [encrypedPrivateKey, expiresIn], function (error) {
     if (error) {
       console.error(error.message);
       return;
@@ -47,10 +49,12 @@ function generateExpiredKey() {
     },
   });
 
+  const encryptedPrivateKey = encrypt(privateKey); // Encrypt the Private Key
+
   const expiresIn = Math.floor(Date.now() / 1000) - 30 * 60; // -30 mins
   const sql = `INSERT INTO keys(key, exp) VALUES (?,?)`;
 
-  db.run(sql, [privateKey, expiresIn], function (error) {
+  db.run(sql, [encryptedPrivateKey, expiresIn], function (error) {
     // Run the db query to insert private key and expiration parameters
     if (error) {
       // display error if error
@@ -96,7 +100,7 @@ app.get("/.well-known/jwks.json", (req, res) => {
       console.error(error.message);
     }
     const jwks = rows.map((row) => {
-      const privateKey = row.key;
+      const privateKey = decrypt(row.key); // Return the Decryped Key
       const publicKey = crypto.createPublicKey(privateKey);
       const jwk = publicKey.export({ format: "jwk" }); // Extract modulus and Exponent from the public key
 
@@ -121,7 +125,7 @@ app.post("/auth", async (req, res) => {
   if (!key) {
     return res.status(404).json({ message: "Key not Found." });
   }
-  const privateKey = key.key; // Variable to store the private key
+  const privateKey = decrypt(key.key); // Variable to store the private key (decrypted)
   const publicKeyObject = crypto.createPublicKey({
     key: privateKey,
     format: "pem",
