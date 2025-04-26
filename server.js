@@ -174,7 +174,7 @@ app.all("/.well-known/jwks.json", (req, res) => {
   }
 });
 
-generateRSAKeyPair();
+console.log(generateRSAKeyPair());
 generateExpiredKey();
 
 const server = app.listen(port, () => {
