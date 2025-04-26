@@ -4,9 +4,12 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import db from "./db.js";
 import { encrypt, decrypt } from "./encryption.js"
+import { v4 as uuidv4 } from 'uuid';
+import * as argon2 from "argon2";
 
 const app = express(); // Init app
 const port = 8080; // Variable for Port
+app.use(express.json());
 
 function generateRSAKeyPair() {
   // Function to generate the RSA Key Pair
@@ -130,6 +133,7 @@ app.post("/auth", async (req, res) => {
     key: privateKey,
     format: "pem",
   });
+  
   const publicKey = publicKeyObject.export({ format: "pem", type: "spki" });
   const { n, e } = publicKeyObject.export({ format: "jwk" });
   const jwk = {
@@ -165,6 +169,29 @@ app.post("/auth", async (req, res) => {
   });
 });
 
+app.post("/register", async (req, res) => {
+  const { username, email } = req.body;
+  
+  // const registerDate = Date.now(); // Set the Date to now for registration
+
+  const password = uuidv4();
+  const hash = await argon2.hash(password); // Hash the password
+  const lastLogin = new Date()
+  const isoString = lastLogin.toISOString();
+  const sql = `INSERT INTO users(username, email, password_hash, last_login) VALUES (?, ?, ?, ?)`
+  
+  db.serialize(() => {
+    db.run(sql, [username, email, hash, isoString], function(error) {
+      if (error) {
+        console.log(error.message);
+        return;
+      }
+    });
+  })
+ 
+  return res.status(201).json({"password": password })
+});
+
 app.all("/auth", (req, res) => {
   // Checking for valid methods
   if (req.method != "POST") {
@@ -179,8 +206,9 @@ app.all("/.well-known/jwks.json", (req, res) => {
   }
 });
 
-generateRSAKeyPair();
-generateExpiredKey();
+
+//generateRSAKeyPair();
+//generateExpiredKey();
 
 const server = app.listen(port, () => {
   // server start
