@@ -3,6 +3,7 @@ import crypto from "crypto";
 import express from "express";
 import jwt from "jsonwebtoken";
 import db from "./db.js";
+import { encrypt, decrypt } from "./encryption.js"
 
 const app = express(); // Init app
 const port = 8080; // Variable for Port
@@ -174,7 +175,7 @@ app.all("/.well-known/jwks.json", (req, res) => {
   }
 });
 
-console.log(generateRSAKeyPair());
+generateRSAKeyPair();
 generateExpiredKey();
 
 const server = app.listen(port, () => {

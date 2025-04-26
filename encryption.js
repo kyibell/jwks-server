@@ -17,7 +17,7 @@ export function encrypt(key) {
     let encrypted = cipher.update(key, 'utf-8', 'hex'); 
     encrypted += cipher.final('hex');
 
-    const result = iv.toString('hex') + ':' + encrypted;
+    const result = iv.toString('hex') + ':' + encrypted; // Attach the IV to the Key
     return result;
 
 }
@@ -30,6 +30,6 @@ export function decrypt(encryptedKey) {
 
     let decrypted = decipher.update(encryptdata, 'hex', 'utf-8'); //  Decrypt the Data
     decrypted += decipher.final('utf8');
-    return decrypted
+    return decrypted;
 }
 
